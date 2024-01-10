@@ -5,18 +5,14 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <termios.h>
-#include <SDL2/SDL.h>
 #include <signal.h>
+#include <bcm2835.h>
 
 // Define constants based on the LiDAR data protocol
 #define START_CHARACTER 0x54
 #define DATA_LENGTH 47
 
 int serial_port;
-
-// Global variables for SDL window and renderer
-SDL_Window *window = NULL;
-SDL_Renderer *renderer = NULL;
 
 // Global variable to control the main loop
 volatile sig_atomic_t keep_running = 1;
@@ -138,68 +134,10 @@ void processLidarData(unsigned char *data) {
 
     // If the end angle is less than the last end angle, we assume a rotation has completed
     if (endAngle < lastEndAngle) {
-        // Clear the renderer to remove old points
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Set draw color to black
-        SDL_RenderClear(renderer); // Clear the renderer with the current draw color
+        print("Rotation Complete")
     }
 
     lastEndAngle = endAngle;
-
-    // After processing the data, call visualizeLidarData to update the window
-    visualizeLidarData(data);
-}
-
-// Function to visualize the LiDAR data with the origin at the center of the GUI
-void visualizeLidarData(unsigned char *data) {
-    int startAngle = (data[5] << 8) | data[4];
-    startAngle = startAngle / 100;
-    // Get the end angle from the data
-    int endAngle = (data[43] << 8) | data[42];
-    endAngle = endAngle / 100;
-
-    // Calculate the angle increment
-    int angleIncrement = (endAngle - startAngle) / (12 - 1);
-
-    unsigned char groups[12][3];
-    for (int i = 0; i < 12; i++) {
-        groups[i][0] = data[6 + i*3];
-        groups[i][1] = data[7 + i*3];
-        groups[i][2] = data[8 + i*3];
-    }
-
-    // Get the window size
-    int window_width, window_height;
-    SDL_GetWindowSize(window, &window_width, &window_height);
-
-    // Calculate the center of the window
-    int center_x = window_width / 2;
-    int center_y = window_height / 2;
-
-    // Draw the point on the window with the origin at the center
-    for (int i = 0; i < 12; i++) {
-        int distance = (groups[i][1] << 8) | groups[i][0];
-        if (distance < 1000) {
-            int angle = startAngle + i * angleIncrement; // Use the angle increment
-            // Convert polar coordinates to Cartesian
-            int x = center_x + (int)(distance * cos(angle * M_PI / 180.0));
-            int y = center_y - (int)(distance * sin(angle * M_PI / 180.0)); // Invert y to account for SDL's top-left origin
-            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-            SDL_RenderDrawPoint(renderer, x, y);
-        }
-    }
-
-    // Event processing
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-        if (e.type == SDL_QUIT) {
-            SDL_DestroyRenderer(renderer);
-            SDL_DestroyWindow(window);
-            SDL_Quit();
-            exit(0);
-        }
-    }
-    // Update your rendering if needed
-    SDL_RenderPresent(renderer);
 }
 
 int main() {
@@ -209,33 +147,14 @@ int main() {
     // Initialize LiDAR
     initializeLidar();
 
-    // Initialize SDL
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        fprintf(stderr, "SDL_Init Error: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    // Create window and renderer
-    if (SDL_CreateWindowAndRenderer(500, 500, 0, &window, &renderer) != 0) {
-        fprintf(stderr, "SDL_CreateWindowAndRenderer Error: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
     unsigned char dataPacket[DATA_LENGTH]; // Adjust size as necessary based on the data packet structure
 
     while (keep_running) {
         readLidarDataPacket(dataPacket);
         processLidarData(dataPacket);
-        visualizeLidarData(dataPacket);
 
         usleep(10); // Example: 10us delay
     }
-
-    // Clean up SDL
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
 
     // Close the serial port
     close(serial_port);
