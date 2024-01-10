@@ -35,37 +35,36 @@ int main() {
 
     tty.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
     tty.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
-    // tty.c_oflag &= ~OXTABS; // Prevent conversion of tabs to spaces (NOT PRESENT ON LINUX)
-    // tty.c_oflag &= ~ONOEOT; // Prevent removal of C-d chars (0x004) in output (NOT PRESENT ON LINUX)
 
     tty.c_cc[VTIME] = 10;    // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
     tty.c_cc[VMIN] = 0;
-
-    // Set in/out baud rate to be 230400
-    cfsetispeed(&tty, B230400);
-    cfsetospeed(&tty, B230400);
 
     if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
         return 1;
     }
 
     // Allocate memory for read buffer, set size according to your needs
-    char read_buf [256];
-    memset(&read_buf, '\0', sizeof(read_buf));
+    unsigned char read_buf [256];
 
-    // Normally you would do at least one read to get data from the serial port
-    int num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
+    while (1) {
+        memset(&read_buf, '\0', sizeof(read_buf));
 
-    // n is the number of bytes read into the buffer
-    if (num_bytes < 0) {
-        return 1;
+        // Normally you would do at least one read to get data from the serial port
+        int num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
+
+        // n is the number of bytes read into the buffer
+        if (num_bytes < 0) {
+            printf("Error reading: %s\n", strerror(errno));
+            continue;
+        }
+
+        // Print what was read in hexadecimal
+        for (int i = 0; i < num_bytes; ++i) {
+            printf("%02x ", read_buf[i]);
+        }
+        printf("\n");
     }
-
-    // Print what was read
-    printf("Read %i bytes. Received message: %s\n", num_bytes, read_buf);
 
     close(serial_port);
     return 0;
 }
-
-
