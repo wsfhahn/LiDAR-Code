@@ -54,7 +54,6 @@ int main() {
 
         // n is the number of bytes read into the buffer
         if (num_bytes < 0) {
-            printf("Error reading: %s\n", strerror(errno));
             continue;
         }
 
