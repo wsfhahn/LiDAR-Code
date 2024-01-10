@@ -26,6 +26,12 @@ void handle_sigint(int sig) {
 void initializeLidar() {
     struct termios tty;
 
+    // Initialize BCM2835
+    if (!bcm2835_init()) return 1;
+
+    // Set pin mode for GPIO pin 17 to out
+    bcm2835_gpio_fsel(RPI_GPIO_P1_11, BCM2835_GPIO_FSEL_OUTP);
+
     // Open the serial port in read/write mode
     serial_port = open("/dev/ttyS0", O_RDWR);
     if (serial_port < 0) {
@@ -109,11 +115,17 @@ void readLidarDataPacket(unsigned char *dataPacket) {
 
 // Function to process the LiDAR data and convert it into a top-down view
 void processLidarData(unsigned char *data) {
+    FILE *file = fopen("/home/pi/lidar/lidar_data.txt", "a"); // Open the file in append mode
+    if (file == NULL) {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+
     // Implement data processing logic here
     int startAngle = (data[5] << 8) | data[4];
     // Map the startAngle value between 0 and 360
     startAngle = startAngle / 100;
-    printf("Start angle: %d\n", startAngle);
+    fprintf(file, "Start angle: %d\n", startAngle);
     unsigned char groups[12][3];
     for (int i = 0; i < 12; i++) {
         groups[i][0] = data[6 + i*3];
@@ -121,10 +133,23 @@ void processLidarData(unsigned char *data) {
         groups[i][2] = data[8 + i*3];
     }
     for (int i = 0; i < 12; i++) {
-        // printf("Group %d: %d, %d, %d\n", i, groups[i][0], groups[i][1], groups[i][2]);
         int distance = (groups[i][1] << 8) | groups[i][0];
         int quality = groups[i][2];
-        printf("Distance: %d, Quality: %d\n", distance, quality);
+        // Compute the angle for each data point
+        float angleIncrement = 360.0 / 12.0;
+        float angle = startAngle + (i * angleIncrement);
+        if (angle >= 360.0) {
+            angle -= 360.0;
+        }
+
+        // Flash LED if something is close
+        if (distance <= 100) {
+            bcm2835_gpio_write(RPI_GPIO_P1_11, HIGH);
+        } else {
+            bcm2835_gpio_write(RPI_GPIO_P1_11, LOW);
+        }
+
+        fprintf(file, "Angle: %.2f, Distance: %d, Quality: %d\n", angle, distance, quality);
     }
 
     // Check if we have completed a rotation
@@ -134,10 +159,11 @@ void processLidarData(unsigned char *data) {
 
     // If the end angle is less than the last end angle, we assume a rotation has completed
     if (endAngle < lastEndAngle) {
-        print("Rotation Complete")
+        fprintf(file, "Rotation Complete\n");
     }
 
     lastEndAngle = endAngle;
+    fclose(file); // Close the file
 }
 
 int main() {
@@ -156,8 +182,9 @@ int main() {
         usleep(10); // Example: 10us delay
     }
 
-    // Close the serial port
+    // Close the serial port and terminate GPIO
     close(serial_port);
+    bcm2835_close();
 
     return 0;
 }
