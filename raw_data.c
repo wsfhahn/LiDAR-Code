@@ -44,7 +44,7 @@ int main() {
     }
 
     // Allocate memory for read buffer, set size according to your needs
-    unsigned char read_buf [256];
+    unsigned char read_buf [8];
 
     while (1) {
         memset(&read_buf, '\0', sizeof(read_buf));
@@ -57,11 +57,14 @@ int main() {
             continue;
         }
 
-        // Print what was read in hexadecimal
+        // Print what was read in hexadecimal and clear the terminal if 54 is printed
         for (int i = 0; i < num_bytes; ++i) {
+            if (read_buf[i] == 0x54) {
+                system("clear");
+            }
             printf("%02x ", read_buf[i]);
+            printf("\n");
         }
-        printf("\n");
     }
 
     close(serial_port);
