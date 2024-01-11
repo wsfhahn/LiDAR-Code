@@ -177,7 +177,7 @@ int main() {
 
     while (keep_running) {
         readLidarDataPacket(dataPacket);
-        processLidarData(dataPacket);
+        // processLidarData(dataPacket);
 
         usleep(10); // Example: 10us delay
     }
