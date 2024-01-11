@@ -148,13 +148,17 @@ void processLidarData(unsigned char *data) {
         // Flash LED if something is close
         if (distance <= 100) {
             bcm2835_gpio_write(RPI_GPIO_P1_11, HIGH);
-        } elif (distance <= 200) {
-            bcm2835_gpio_write(RPI_GPIO_P1_13, HIGH);
-        } elif (distance <= 300) {
-            bcm2835_gpio_write(RPI_GPIO_P1_15, HIGH);
         } else {
             bcm2835_gpio_write(RPI_GPIO_P1_11, LOW);
+        }
+        if (distance <= 200) {
+            bcm2835_gpio_write(RPI_GPIO_P1_13, HIGH);
+        } else {
             bcm2835_gpio_write(RPI_GPIO_P1_13, LOW);
+        }
+        if (distance <= 300) {
+            bcm2835_gpio_write(RPI_GPIO_P1_15, HIGH);
+        } else {
             bcm2835_gpio_write(RPI_GPIO_P1_15, LOW);
         }
 
