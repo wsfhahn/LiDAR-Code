@@ -29,8 +29,11 @@ void initializeLidar() {
     // Initialize BCM2835
     if (!bcm2835_init()) return 1;
 
-    // Set pin mode for GPIO pin 17 to out
+    // Set pin mode for GPIO pins to out
     bcm2835_gpio_fsel(RPI_GPIO_P1_11, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_fsel(RPI_GPIO_P1_13, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_fsel(RPI_GPIO_P1_15, BCM2835_GPIO_FSEL_OUTP);
+
 
     // Open the serial port in read/write mode
     serial_port = open("/dev/ttyS0", O_RDWR);
@@ -145,8 +148,14 @@ void processLidarData(unsigned char *data) {
         // Flash LED if something is close
         if (distance <= 100) {
             bcm2835_gpio_write(RPI_GPIO_P1_11, HIGH);
+        } elif (distance <= 200) {
+            bcm2835_gpio_write(RPI_GPIO_P1_13, HIGH);
+        } elif (distance <= 300) {
+            bcm2835_gpio_write(RPI_GPIO_P1_15, HIGH);
         } else {
             bcm2835_gpio_write(RPI_GPIO_P1_11, LOW);
+            bcm2835_gpio_write(RPI_GPIO_P1_13, LOW);
+            bcm2835_gpio_write(RPI_GPIO_P1_15, LOW);
         }
 
         fprintf(file, "Angle: %.2f, Distance: %d, Quality: %d\n", angle, distance, quality);
